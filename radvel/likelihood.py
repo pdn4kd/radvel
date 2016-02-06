@@ -120,6 +120,33 @@ class RVLikelihood(Likelihood):
         
         return loglike
 
+class TTVLikelihood(Likelihood):
+    def __init__(self, model, epoch, tt, tt_e, suffix=''):
+        #        self.gamma_param = 'gamma'+suffix
+        #        self.logjit_param = 'logjit'+suffix
+        #        extra_params = [self.gamma_param, self.logjit_param]
+        super(TTVLikelihood, self).__init__(
+                                           model, epoch, tt, tt_e
+                                           )
+    
+    def residuals(self):
+        return self.y - self.model(self.x)
+    
+    def logprob(self):
+        """
+            Return log-likelihood given
+            
+            Returns
+            -------
+            loglike : Natural log of likelihood
+            """
+        
+        #        sigma_jit = np.exp( self.params[self.logjit_param] )
+        residuals = self.residuals()
+        loglike = loglike_jitter(residuals, self.yerr, 0.)
+        
+        return loglike
+
 def loglike_jitter(residuals, sigma, sigma_jit):
     """
     Log-likelihood incorporating jitter
