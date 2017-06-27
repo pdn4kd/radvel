@@ -208,6 +208,11 @@ class Basis(object):
                 e = _getpar('e')
                 w = _getpar('w')
                 k = _getpar('k')
+                if w > 2 * np.pi:
+                    print "switching from degrees to radians"
+                    w *= pi/180
+                else:
+                    print "w=",w, "(radians)"
                 try:
                     tp = _getpar('tp')
                 except KeyError:

@@ -2,6 +2,7 @@ from scipy import optimize
 import numpy as np
 import copy
 import collections
+import pdb
 
 def maxlike_fitting(post, verbose=True):
     """Maximum Likelihood Fitting

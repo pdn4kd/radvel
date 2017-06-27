@@ -16,10 +16,13 @@ import radvel.likelihood
 import radvel.plotting
 import radvel.utils
 import radvel.fitting
+import pylab as pl
+import pdb
 
 warnings.filterwarnings("ignore")
 warnings.simplefilter('once', DeprecationWarning)
 def initialize_posterior(P):
+    
     params = P.params.basis.from_cps(P.params, P.fitting_basis, keep=False)
 
     for key in params.keys():
@@ -43,7 +46,6 @@ Converting 'logjit' to 'jit' for you now.
     
     # initialize RVmodel object
     mod = radvel.RVModel(params, time_base=P.time_base)   
-
     # initialize RVlikelihood objects for each instrument
     telgrps = P.data.groupby('tel').groups
     likes = {}
@@ -56,7 +58,9 @@ Converting 'logjit' to 'jit' for you now.
         likes[inst].params['gamma_'+inst] = iparams['gamma_'+inst]
         likes[inst].params['jit_'+inst] = iparams['jit_'+inst]
 
+
     like = radvel.likelihood.CompositeLikelihood(likes.values())
+
 
     # Set fixed/vary parameters
     like.vary.update(P.vary)
@@ -65,6 +69,32 @@ Converting 'logjit' to 'jit' for you now.
     post = radvel.posterior.Posterior(like)
     post.priors = P.priors
     return post
+
+
+def LSpergram(P, post, saveplot):
+    pl.close('all')
+    import periodogram
+    per, power, pkpers, pkheights, faps = periodogram.lspergram(P.data.time, post.likelihood.residuals())
+    pl.figure(figsize=[11,4])
+    pl.plot(per, power, '-k')
+    ax = pl.gca()
+    ax.set_xscale('log')
+    for i in range(len(pkpers)):
+        if pkpers[i] > 1.1:
+            pl.plot(pkpers[i], pkheights[i], 'o', markerfacecolor='None', markeredgewidth='2', markeredgecolor='b', markersize=5)
+            txt =  str('%.1f') %(pkpers[i])
+            pl.text(pkpers[i], pkheights[i], txt, color='red', size=14) 
+    pl.xlim(1.05,1000)
+    ax.tick_params(axis='x', labelsize=20, which='major')
+    ax.tick_params(axis='y', labelsize=20, which='major')
+    #  ax.set_xticklabels(['1','1','10', '100', '1000'], minor=False)
+    pl.xlabel('Orbital Period [days]', size=22)
+    pl.ylabel('Power', size=22)
+    
+    if saveplot != None:
+        pl.savefig(saveplot,dpi=150, bbox_inches='tight', pad_inches=0.05)
+    pl.close()
+
 
 if __name__ == '__main__':
     psr = argparse.ArgumentParser(description='Fit an RV dataset')
@@ -201,7 +231,11 @@ if __name__ == '__main__':
                 chains, P, saveplot=cp_derived_saveto
             )
             report_depfiles.append(cp_derived_saveto)
-            
+
+            # Save LS periodogram of residuals:            
+            LSpergram_saveto = os.path.join(writedir, P.starname+'_residual_LSpergram.pdf')
+            LSpergram(P, post, saveplot=LSpergram_saveto)
+
         post_summary=chains.quantile([0.1587, 0.5, 0.8413])
         print '\n Posterior Summary...\n'
         print post_summary
@@ -218,12 +252,13 @@ if __name__ == '__main__':
         
         print "Performing post-MCMC maximum likelihood fit..."
         post = radvel.fitting.maxlike_fitting(post, verbose=False)
+        compstats = radvel.fitting.model_comp(post, verbose=False)
         
         cpspost = copy.deepcopy(post)
         cpsparams = post.params.basis.to_cps(post.params)
         cpspost.params.update(cpsparams)
 
-        report = radvel.report.RadvelReport(P, post, chains)
+        report = radvel.report.RadvelReport(P, post, chains, compstats=compstats)
 
         cpspost.uparams = {}
         for par in cpspost.params.keys():
@@ -259,3 +294,5 @@ if __name__ == '__main__':
     pickle.dump(post, pkl)
     pkl.close()
     
+
+
