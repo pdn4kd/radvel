@@ -18,6 +18,7 @@ from collections import OrderedDict
 import pandas as pd
 import numpy as np
 from astropy import constants as c
+from numpy import inf as inf
 
 if sys.version_info[0] < 3:
     import ConfigParser as configparser
